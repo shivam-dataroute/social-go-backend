@@ -1,6 +1,8 @@
 package main
 
 import (
+	"time"
+
 	"github.com/SHIVAM-GOUR/social_go_app/internal/db"
 	"github.com/SHIVAM-GOUR/social_go_app/internal/env"
 	"github.com/SHIVAM-GOUR/social_go_app/internal/store"
@@ -39,6 +41,9 @@ func main() {
 			maxIdleTime:  env.GetString("DB_MAX_IDLE_TIME", "15m"),
 		},
 		env: env.GetString("ENV", "development"),
+		mail: mailConfig{
+			exp: time.Hour * 24 * 3, // 3 days
+		},
 	}
 
 	// Logger
