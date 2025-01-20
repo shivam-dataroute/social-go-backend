@@ -6,9 +6,11 @@ import (
 	"time"
 
 	"github.com/SHIVAM-GOUR/social_go_app/docs" // this is required to generate swagger docs
+	"github.com/SHIVAM-GOUR/social_go_app/internal/mailer"
 	"github.com/SHIVAM-GOUR/social_go_app/internal/store"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 	httpSwagger "github.com/swaggo/http-swagger" // http-swagger middleware
 	"go.uber.org/zap"
 )
@@ -17,18 +19,26 @@ type application struct {
 	config config
 	store  store.Storage
 	logger *zap.SugaredLogger
+	mailer mailer.Client
 }
 
 type config struct {
-	addr   string
-	db     dbConfig
-	env    string
-	apiURL string
-	mail   mailConfig
+	addr        string
+	db          dbConfig
+	env         string
+	apiURL      string
+	mail        mailConfig
+	frontendURL string
 }
 
 type mailConfig struct {
-	exp time.Duration
+	sendGrid  sendGridConfig
+	fromEmail string
+	exp       time.Duration
+}
+
+type sendGridConfig struct {
+	apiKey string
 }
 
 type dbConfig struct {
@@ -40,6 +50,20 @@ type dbConfig struct {
 
 func (app *application) mount() *chi.Mux {
 	r := chi.NewRouter()
+
+	// THIS MIDDLEWARE TO AVOID CORS ERROR
+	// Basic CORS
+	// for more ideas, see: https://developer.github.com/v3/#cross-origin-resource-sharing
+	r.Use(cors.Handler(cors.Options{
+		// AllowedOrigins:   []string{"https://foo.com"}, // Use this to allow specific origin hosts
+		AllowedOrigins: []string{"https://*", "http://*"},
+		// AllowOriginFunc:  func(r *http.Request, origin string) bool { return true },
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: false,
+		MaxAge:           300, // Maximum value not ignored by any of major browsers
+	}))
 
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
@@ -86,7 +110,7 @@ func (app *application) mount() *chi.Mux {
 			})
 
 		})
-		
+
 		// Public routes
 		r.Route("/authentication", func(r chi.Router) {
 			r.Post("/user", app.registerUserHandler)

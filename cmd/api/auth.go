@@ -3,8 +3,10 @@ package main
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"net/http"
 
+	"github.com/SHIVAM-GOUR/social_go_app/internal/mailer"
 	"github.com/SHIVAM-GOUR/social_go_app/internal/store"
 	"github.com/google/uuid"
 )
@@ -79,10 +81,26 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 
 	userWithToken := UserWithToken{
 		User:  user,
-		Token: plainToken,
+		Token: plainToken, 
+	}
+
+	activationURL := fmt.Sprintf("%s/confirm/%s", app.config.frontendURL, plainToken)
+
+	isProdEnv := app.config.env == "production"
+	vars := struct {
+		Username      string
+		ActivationURL string
+	}{
+		Username:      user.Username,
+		ActivationURL: activationURL,
 	}
 
 	// send mail
+	err = app.mailer.Send(mailer.UserWelcomeTemplate, user.Username, user.Email, vars, !isProdEnv)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
 
 	if err := app.jsonResponse(w, http.StatusCreated, userWithToken); err != nil {
 		app.internalServerError(w, r, err)
