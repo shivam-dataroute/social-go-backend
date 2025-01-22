@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/SHIVAM-GOUR/social_go_app/docs" // this is required to generate swagger docs
+	"github.com/SHIVAM-GOUR/social_go_app/internal/auth"
 	"github.com/SHIVAM-GOUR/social_go_app/internal/mailer"
 	"github.com/SHIVAM-GOUR/social_go_app/internal/store"
 	"github.com/go-chi/chi/v5"
@@ -16,10 +17,11 @@ import (
 )
 
 type application struct {
-	config config
-	store  store.Storage
-	logger *zap.SugaredLogger
-	mailer mailer.Client
+	config        config
+	store         store.Storage
+	logger        *zap.SugaredLogger
+	mailer        mailer.Client
+	authenticator auth.Authenticator
 }
 
 type config struct {
@@ -34,6 +36,13 @@ type config struct {
 
 type authConfig struct {
 	basic basicConfig
+	token tokenConfig
+}
+
+type tokenConfig struct {
+	secret string
+	exp    time.Duration
+	iss    string
 }
 
 type basicConfig struct {
@@ -124,6 +133,7 @@ func (app *application) mount() *chi.Mux {
 		// Public routes
 		r.Route("/authentication", func(r chi.Router) {
 			r.Post("/user", app.registerUserHandler)
+			r.Post("/token", app.createTokenHandler)
 		})
 	})
 
